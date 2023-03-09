@@ -1,14 +1,14 @@
 const router = require("express").Router();
-const { parse } = require("dotenv");
-const Movie = require("../models/dataMovives")
+const Movie = require("../models/dataMovives");
+const movies = require("../config/movies.json");
 
-router.post("/getAllMovies", async (req, res) => {
+router.get("/movies", async (req, res) => {
     try {
-        const skip = parselnt(req.body.skip) - 1 || 0;
-        const limit = parselnt(req.query.limit) || 5;
-        const searchText = req.query.searchText || ""
-        let sort = req.query.sort || "rating"
-        let genre = req.query.genre || "All"
+        const page = parseInt(req.query.page) - 1 || 0;
+        const limit = parseInt(req.query.limit) || 5;
+        const search = req.query.search || "";
+        let sort = req.query.sort || "rating";
+        let genre = req.query.genre || "All";
 
         const genreOptions = [
             "Action",
@@ -35,34 +35,45 @@ router.post("/getAllMovies", async (req, res) => {
             sortBy[sort[0]] = "asc";
         }
 
-        const movies = await Movie.find({ name: { $regex: searchText, $options: "i" } })
+        const movies = await Movie.find({ name: { $regex: search, $options: "i" } })
             .where("genre")
             .in([...genre])
             .sort(sortBy)
-            .skip(skip * limit)
+            .skip(page * limit)
             .limit(limit);
 
         const total = await Movie.countDocuments({
             genre: { $in: [...genre] },
-            name: { $regex: searchText, $options: "i" },
+            name: { $regex: search, $options: "i" },
         });
 
         const response = {
             error: false,
             total,
-            skip: skip + 1,
+            page: page + 1,
             limit,
             genres: genreOptions,
             movies,
         };
 
         res.status(200).json(response);
+    } catch (err) {
+        console.log(err);
+        res.status(500).json({ error: true, message: "Internal Server Error" });
     }
-    catch {
-        console.log(err)
-        res.status(500).json({ err: true, message: "Internal Sever Error" })
+});
 
-    }
-})
+// const insertMovies = async () => {
+//     try {
+//         const docs = await Movie.insertMany(movies);
+//         return Promise.resolve(docs);
+//     } catch (err) {
+//         return Promise.reject(err)
+//     }
+// };
 
-module.exports = router
+// insertMovies()
+//     .then((docs) => console.log(docs))
+//     .catch((err) => console.log(err))
+
+module.exports = router;
